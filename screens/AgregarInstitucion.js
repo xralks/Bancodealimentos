@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
 import { supabase } from '../lib/supabase';
 
-export default function Agregar({ navigation }) {
+export default function AgregarInstitucion({ navigation }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
 
   const handleSave = async () => {
-    // Validar que el título y el contenido no sean nulos o vacíos
     if (!title.trim() || !content.trim()) {
       Alert.alert('Error', 'Por favor, complete todos los campos.');
       return;
@@ -23,20 +22,27 @@ export default function Agregar({ navigation }) {
     const { error } = await supabase
       .from('posts')
       .insert([
-        { title: title.trim(), content: content.trim(), user_id: user.id }
+        { 
+          title: title.trim(), 
+          content: content.trim(),
+          user_id: user.id 
+        }
       ]);
 
     if (error) {
       Alert.alert('Error', error.message);
     } else {
-      Alert.alert('Éxito', 'Publicación agregada correctamente.');
+      Alert.alert('Publicación agregada correctamente.', 'Tu publicación será notificada al Banco de Alimentos. Gracias!!!');
       navigation.goBack();
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.heading}>Agregar Publicación</Text>
+      <View>
+        <Image source={require('../assets/logo.png')} style={styles.Logo} />
+      </View>
+      <Text style={styles.heading}>Crea una publicación para dar aviso al Banco de Alimentos de lo que necesita la institución.</Text>
       <TextInput
         style={styles.input}
         placeholder="Título"
@@ -44,14 +50,20 @@ export default function Agregar({ navigation }) {
         onChangeText={setTitle}
       />
       <TextInput
-        style={styles.input}
-        placeholder="Contenido"
+        style={[styles.input, { height: 100 }]}
+        placeholder="Cuéntanos, ¿Qué necesitas?"
         value={content}
         onChangeText={setContent}
         multiline
       />
+      <TextInput
+        style={styles.input}
+        placeholder="Cantidad de personas:"
+        value={title}
+        onChangeText={setTitle}
+      />
       <TouchableOpacity style={styles.button} onPress={handleSave}>
-        <Text style={styles.buttonText}>Guardar</Text>
+        <Text style={styles.buttonText}>PUBLICAR</Text>
       </TouchableOpacity>
     </View>
   );
@@ -65,8 +77,20 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#fff',
   },
+  Logo: {
+    width: 150,
+    height: 160,
+    borderColor: 'White',
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 5,
+    marginBottom: 20,
+  },
   heading: {
-    fontSize: 24,
+    textAlign: 'center',
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 20,
   },

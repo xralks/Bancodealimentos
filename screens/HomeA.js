@@ -1,16 +1,17 @@
+// HomeA.js
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Alert, FlatList, RefreshControl } from 'react-native';
 import { supabase } from '../lib/supabase';
 
-export default function Home({ navigation }) {
+export default function HomeA({ navigation }) {
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
-  const [tipo, setTipo] = useState(null);
+  const [tipo, settipo] = useState(null);
   const [numPosts, setNumPosts] = useState(0);
   const [posts, setPosts] = useState([]);
   const [userId, setUserId] = useState(null);
-  const [refreshing, setRefreshing] = useState(false); 
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -32,27 +33,24 @@ export default function Home({ navigation }) {
           setUsername(data.username);
           setFullName(data.full_name);
           setAvatarUrl(data.avatar_url);
-          setTipo(data.tipo);
-          fetchPosts(user.id, data.tipo);
+          settipo(data.tipo);
+          fetchPosts(user.id);
           fetchPostsCount(user.id);
         }
       }
     };
 
-    const fetchPosts = async (userId, userTipo) => {
+    const fetchPosts = async (userId) => {
       const { data, error } = await supabase
         .from('posts')
         .select('*, profiles(full_name, tipo)')
         .neq('user_id', userId)
-        .eq('profiles.tipo', 'Administrador') 
-        .eq('dirigido', userTipo === 'Institución')
         .order('created_at', { ascending: false });
 
       if (error) {
         Alert.alert('Error', error.message);
       } else {
-        const filteredPosts = data.filter(post => post.profiles);
-        setPosts(filteredPosts);
+        setPosts(data);
       }
     };
 
@@ -60,7 +58,7 @@ export default function Home({ navigation }) {
       const { count, error } = await supabase
         .from('posts')
         .select('id', { count: 'exact' })
-        .eq('user_id', userId);
+        .neq('user_id', userId);
 
       if (error) {
         Alert.alert('Error', error.message);
@@ -73,54 +71,35 @@ export default function Home({ navigation }) {
   }, []);
 
   const fetchData = async () => {
-    setRefreshing(true); 
+    setRefreshing(true);
     try {
       const { data, error } = await supabase
         .from('posts')
         .select('*, profiles(full_name, tipo)')
         .neq('user_id', userId)
-        .eq('profiles.tipo', 'Administrador') 
-        .eq('dirigido', tipo === 'Institución')
         .order('created_at', { ascending: false });
 
       if (error) {
         Alert.alert('Error', error.message);
       } else {
-        const filteredPosts = data.filter(post => post.profiles);
-        setPosts(filteredPosts);
+        setPosts(data);
       }
     } catch (error) {
       console.error('Error fetching data:', error.message);
     } finally {
-      setRefreshing(false); 
+      setRefreshing(false);
     }
-  };
-
-  const navigateToMyPublications = () => {
-    navigation.navigate('MyPublication');
-  };
-
-  const navigateToMyData = () => {
-    navigation.navigate('Misdatos');
   };
 
   const navigateToAddPost = () => {
-    if (tipo === 'Institución') {
-      navigation.navigate('AgregarInstitucion');
-    } else {
-      navigation.navigate('AgregarLocatario');
-    }
+    navigation.navigate('AgregarAdmin');
   };
 
   const navigateToPublicacion = (itemId) => {
-    navigation.navigate('Publicacion', { itemId });
+    navigation.navigate('PublicacionA', { itemId });
   };
 
   const renderPost = ({ item }) => {
-    if (!item.profiles) {
-      return null;
-    }
-
     return (
       <TouchableOpacity style={styles.postItem} onPress={() => navigateToPublicacion(item.id)}>
         <Image
@@ -132,9 +111,13 @@ export default function Home({ navigation }) {
         <Text style={styles.postAuthor}>Publicado por: {item.profiles.full_name}</Text>
         <Text style={styles.postDate}>{new Date(item.created_at).toLocaleDateString()}</Text>
         <View style={styles.badgeContainer}>
-          {item.profiles.tipo === 'Administrador' && (
-            <View style={styles.adminBadge}>
-              <Text style={styles.badgeText}>Administrador</Text>
+          {item.profiles.tipo === 'Institución' ? (
+            <View style={styles.institutionBadge}>
+              <Text style={styles.badgeText}>Institución</Text>
+            </View>
+          ) : (
+            <View style={styles.locatarioBadge}>
+              <Text style={styles.badgeText}>Locatario</Text>
             </View>
           )}
         </View>
@@ -146,7 +129,7 @@ export default function Home({ navigation }) {
     <View style={styles.container}>
       <View style={styles.imageContainer}>
         <Image
-          source={tipo === 'Institución' ? require('../assets/institucion.jpg') : require('../assets/porciones.jpg')}
+          source={require('../assets/BANCO-DE-ALIMENTOS-6.jpg')}
           style={styles.image}
         />
         <TouchableOpacity style={styles.addButton} onPress={navigateToAddPost}>
@@ -166,11 +149,10 @@ export default function Home({ navigation }) {
           />
         )}
         <Text style={styles.name}>{fullName}</Text>
-        <Text style={styles.condition}>{tipo === 'Institución' ? 'Institución' : 'Locatario'}</Text>
+        <Text style={styles.condition}>Administrador</Text>
       </View>
       <View style={styles.statsContainer}>
-        <Text style={styles.statsText}>{numPosts} Mis Publicaciones</Text>
-        <Text style={styles.statsText}>{tipo === 'Institución' ? '0 Recibidas' : '0 Enviadas'}</Text>
+        <Text style={styles.statsText}>{posts.length} Publicaciones Disponibles</Text>
       </View>
       <FlatList
         data={posts}
@@ -323,8 +305,15 @@ const styles = StyleSheet.create({
     marginTop: 5,
     justifyContent: 'flex-start',
   },
-  adminBadge: {
+  institutionBadge: {
     backgroundColor: '#007bff',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    marginRight: 5,
+  },
+  locatarioBadge: {
+    backgroundColor: '#28a745',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 10,

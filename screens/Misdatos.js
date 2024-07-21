@@ -1,13 +1,15 @@
+// MisDatos.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Switch, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Image } from 'react-native';
 import { supabase } from '../lib/supabase';
 
 export default function UserProfile({ navigation }) {
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [userId, setUserId] = useState(null); 
-  const [condition, setCondition] = useState(false); 
+  const [userId, setUserId] = useState(null);
+  const [tipo, setTipo] = useState('');
+  const [direccion, setDireccion] = useState('');
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -19,7 +21,7 @@ export default function UserProfile({ navigation }) {
 
         const { data, error: profileError } = await supabase
           .from('profiles')
-          .select('username, full_name, condition') 
+          .select('username, full_name, tipo, direccion')
           .eq('id', user.id)
           .single();
 
@@ -28,7 +30,8 @@ export default function UserProfile({ navigation }) {
         } else {
           setUsername(data.username);
           setFullName(data.full_name);
-          setCondition(data.condition); 
+          setTipo(data.tipo);
+          setDireccion(data.direccion);
         }
       }
     };
@@ -41,7 +44,7 @@ export default function UserProfile({ navigation }) {
 
     const { error } = await supabase
       .from('profiles')
-      .update({ username, full_name: fullName, condition }) 
+      .update({ username, full_name: fullName, direccion })
       .eq('id', userId);
 
     setLoading(false);
@@ -54,14 +57,12 @@ export default function UserProfile({ navigation }) {
     }
   };
 
-  const toggleSwitch = () => setCondition(previousState => !previousState);
-
   return (
     <View style={styles.container}>
-        <Image
-          source={require('../assets/postIma.jpg')}
-          style={styles.profilePicture}
-        />
+      <Image
+        source={require('../assets/perfil.jpeg')}
+        style={styles.profilePicture}
+      />
       <Text style={styles.title}>Editar Perfil</Text>
       <TextInput
         style={styles.input}
@@ -75,17 +76,18 @@ export default function UserProfile({ navigation }) {
         value={fullName}
         onChangeText={setFullName}
       />
-      <View style={styles.switchContainer}>
-        <Text style={styles.switchLabel}>
-          {condition ? 'Soy vendedor' : 'Soy locatario'}
-        </Text>
-        <Switch
-          trackColor={{ false: "#767577", true: "#81b0ff" }}
-          thumbColor={condition ? "#77d353" : "#f4f3f4"}
-          onValueChange={toggleSwitch}
-          value={condition}
-        />
-      </View>
+      <TextInput
+        style={styles.input}
+        placeholder="Dirección"
+        value={direccion}
+        onChangeText={setDireccion}
+      />
+      <TextInput
+        style={[styles.input, styles.readOnlyInput]}
+        placeholder="Tipo"
+        value={tipo === 'Administrador' ? 'Administrador' : tipo === 'Institucion' ? 'Institución' : 'Locatario'}
+        editable={false}
+      />
       <TouchableOpacity
         style={[styles.button, styles.cajaboton]}
         onPress={handleSave}
@@ -119,14 +121,10 @@ const styles = StyleSheet.create({
     borderColor: '#77d353',
     paddingRight: 10,
   },
-  switchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 10,
-  },
-  switchLabel: {
-    fontSize: 16,
-    marginRight: 10,
+  readOnlyInput: {
+    backgroundColor: '#f0f0f0',
+    color: '#a0a0a0',
+    borderColor: '#d0d0d0',
   },
   button: {
     padding: 15,

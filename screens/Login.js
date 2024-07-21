@@ -11,6 +11,7 @@ const Login = ({ navigation }) => {
   const handleLogin = async () => {
     setLoading(true);
 
+ 
     const { data: { session }, error: loginError } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -30,9 +31,10 @@ const Login = ({ navigation }) => {
       return;
     }
 
+    
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('full_name, username')
+      .select('full_name, username, tipo') 
       .eq('id', user.id)
       .single();
 
@@ -44,9 +46,13 @@ const Login = ({ navigation }) => {
     }
 
     if (!profile.full_name || !profile.username) {
-      navigation.navigate('PrimerPaso'); // Redirige a PrimerPaso.js si el perfil está incompleto
+      navigation.navigate('PrimerPaso'); 
     } else {
-      navigation.navigate('Home'); // Redirige a Home.js si el perfil está completo
+      if (profile.tipo === 'Administrador') {
+        navigation.navigate('HomeA'); 
+      } else {
+        navigation.navigate('Home'); 
+      }
     }
   };
 
@@ -94,7 +100,7 @@ const styles = StyleSheet.create({
   Logo: {
     width: 190,
     height: 200,
-    bordercolor: 'White',
+    borderColor: 'White',
     shadowColor: '#000',
     shadowOffset: { width: 2, height: 4 },
     shadowOpacity: 0.25,
