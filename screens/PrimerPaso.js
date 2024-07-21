@@ -6,7 +6,7 @@ import * as ImagePicker from 'react-native-image-picker';
 export default function PrimerPaso({ navigation }) {
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
-  const [avatar, setAvatar] = useState(null); // Nueva variable de estado para la imagen
+  const [avatar, setAvatar] = useState(null);
   const [condition, setCondition] = useState(false);
 
   const handleSelectImage = () => {
@@ -16,7 +16,7 @@ export default function PrimerPaso({ navigation }) {
       } else if (response.errorCode) {
         console.log('ImagePicker Error: ', response.errorMessage);
       } else {
-        setAvatar(response.assets[0]); // Guardar la imagen seleccionada
+        setAvatar(response.assets[0]);
       }
     });
   };
@@ -34,7 +34,7 @@ export default function PrimerPaso({ navigation }) {
       return;
     }
 
-    // Subir la imagen a Supabase Storage
+  
     const { data: avatarData, error: uploadError } = await supabase
       .storage
       .from('avatars')
@@ -45,10 +45,10 @@ export default function PrimerPaso({ navigation }) {
       return;
     }
 
-    // Obtener la URL de la imagen cargada
+   
     const avatarUrl = supabase.storage.from('avatars').getPublicUrl(avatarData.path).publicURL;
 
-    // Actualizar el perfil con la URL de la imagen
+ 
     const { error } = await supabase
       .from('profiles')
       .update({ full_name: fullName, username, avatar_url: avatarUrl, condition })
