@@ -1,10 +1,8 @@
-// MisPublicaciones.js
-
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
 
-const MisPublicaciones = () => {
+const Aceptadas = () => {
   const [posts, setPosts] = useState([]);
   const [userId, setUserId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,6 +28,7 @@ const MisPublicaciones = () => {
             .from('posts')
             .select('*')
             .eq('user_id', userId)
+            .eq('aceptada', 'aceptada') 
             .order('created_at', { ascending: false });
 
           if (error) {
@@ -50,21 +49,12 @@ const MisPublicaciones = () => {
     }
   }, [userId]);
 
+
   const renderItem = ({ item }) => (
     <View style={styles.item}>
-      <Image
-        source={require('../assets/postIma.jpg')}
-        style={styles.image}
-      />
       <Text style={styles.title}>{item.title}</Text>
       <Text style={styles.content}>{item.content}</Text>
       <Text style={styles.createdAt}>{new Date(item.created_at).toLocaleString()}</Text>
-      <TouchableOpacity style={styles.navButtonElim}>
-        <Text style={styles.navButtonText}>Eliminar</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.navButtonEdit}>
-        <Text style={styles.navButtonText}>Editar</Text>
-      </TouchableOpacity>
     </View>
   );
 
@@ -105,12 +95,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   item: {
-    backgroundColor: '#f0fbea',
+    backgroundColor: '#ffffff',
     padding: 15,
-    marginVertical: 10,
-    borderRadius: 10,
+    marginVertical: 8,
+    marginHorizontal: 12,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#77d353',
+    borderColor: '#dcdcdc',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 2,
   },
   title: {
     fontSize: 18,
@@ -127,12 +123,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#254b1c',
     marginBottom: 5,
-  },
-  image: {
-    width: '100%',
-    height: 150,
-    borderRadius: 10,
-    marginBottom: 10,
   },
   navButtonElim: {
     backgroundColor: '#ed4646',
@@ -155,4 +145,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MisPublicaciones;
+export default Aceptadas;

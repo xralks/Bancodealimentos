@@ -1,7 +1,7 @@
-// HomeA.js
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Alert, FlatList, RefreshControl } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Alert, FlatList, RefreshControl, Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 export default function HomeA({ navigation }) {
   const [username, setUsername] = useState('');
@@ -45,6 +45,7 @@ export default function HomeA({ navigation }) {
         .from('posts')
         .select('*, profiles(full_name, tipo)')
         .neq('user_id', userId)
+        .eq('aceptada', 'no aceptada') 
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -58,7 +59,8 @@ export default function HomeA({ navigation }) {
       const { count, error } = await supabase
         .from('posts')
         .select('id', { count: 'exact' })
-        .neq('user_id', userId);
+        .neq('user_id', userId)
+        .eq('aceptada', 'no aceptada');  
 
       if (error) {
         Alert.alert('Error', error.message);
@@ -77,6 +79,7 @@ export default function HomeA({ navigation }) {
         .from('posts')
         .select('*, profiles(full_name, tipo)')
         .neq('user_id', userId)
+        .eq('aceptada', 'no aceptada') 
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -168,13 +171,13 @@ export default function HomeA({ navigation }) {
       />
       <View style={styles.navContainer}>
         <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('Misdatos')}>
-          <Text style={styles.navButtonText}>Mis datos</Text>
+        <Icon name="account-outline" size={28} color="#3b911f" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('MyPublication')}>
-          <Text style={styles.navButtonText}>Mis Publicaciones</Text>
+        <Icon name="format-list-bulleted" size={28} color="#3b911f" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navButton}onPress={() => navigation.navigate('Aceptadas')}>
-          <Text style={styles.navButtonText}>Aceptadas</Text>
+        <TouchableOpacity style={styles.navButton}onPress={() => navigation.navigate('Ubicaciones')}>
+        <Icon name="map-marker" size={28} color="#3b911f" />
         </TouchableOpacity>
       </View>
     </View>
@@ -213,6 +216,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   condition: {
+    fontWeight: '500',
     color: '#000',
     marginTop: 5,
   },
@@ -229,13 +233,18 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   postItem: {
-    backgroundColor: '#f0fbea',
+    backgroundColor: '#ffffff',
     padding: 15,
-    marginVertical: 5,
-    marginHorizontal: 10,
-    borderRadius: 10,
+    marginVertical: 8,
+    marginHorizontal: 12,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#3b911f',
+    borderColor: '#dcdcdc',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 2,
   },
   postTitle: {
     fontSize: 18,
@@ -261,15 +270,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     width: '100%',
     borderTopWidth: 1,
+    borderRadius: 12,
     borderColor: '#ddd',
     paddingVertical: 10,
+    backgroundColor: '#beeea8',
+    height: Platform.OS === 'ios' ? 60 : 50,
+    bottom: 0,
   },
   navButton: {
     alignItems: 'center',
-  },
-  navButtonText: {
-    fontSize: 16,
-    color: '#77d353',
   },
   addButton: {
     position: 'absolute',

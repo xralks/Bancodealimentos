@@ -77,7 +77,7 @@ export default function UserProfile({ navigation }) {
         onChangeText={setFullName}
       />
       <TextInput
-        style={styles.input}
+        style={[styles.input, styles.readOnlyInput]}
         placeholder="Dirección"
         value={direccion}
         onChangeText={setDireccion}

@@ -1,7 +1,5 @@
-// MisPublicaciones.js
-
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Image, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
 
 const MisPublicaciones = () => {
@@ -50,6 +48,41 @@ const MisPublicaciones = () => {
     }
   }, [userId]);
 
+  const handleDelete = (postId) => {
+    Alert.alert(
+      'Confirmar eliminación',
+      '¿Estás seguro de que deseas eliminar esta publicación?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Eliminar',
+          onPress: async () => {
+            try {
+              const { error } = await supabase
+                .from('posts')
+                .delete()
+                .eq('id', postId);
+              
+              if (error) {
+                throw error;
+              }
+
+              
+              setPosts(posts.filter(post => post.id !== postId));
+            } catch (error) {
+              console.error('Error deleting post:', error.message);
+            }
+          },
+          style: 'destructive',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   const renderItem = ({ item }) => (
     <View style={styles.item}>
       <Image
@@ -59,7 +92,10 @@ const MisPublicaciones = () => {
       <Text style={styles.title}>{item.title}</Text>
       <Text style={styles.content}>{item.content}</Text>
       <Text style={styles.createdAt}>{new Date(item.created_at).toLocaleString()}</Text>
-      <TouchableOpacity style={styles.navButtonElim}>
+      <TouchableOpacity 
+        style={styles.navButtonElim}
+        onPress={() => handleDelete(item.id)}
+      >
         <Text style={styles.navButtonText}>Eliminar</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.navButtonEdit}>
@@ -105,12 +141,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   item: {
-    backgroundColor: '#f0fbea',
+    backgroundColor: '#ffffff',
     padding: 15,
-    marginVertical: 10,
-    borderRadius: 10,
+    marginVertical: 8,
+    marginHorizontal: 12,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#77d353',
+    borderColor: '#dcdcdc',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 2,
   },
   title: {
     fontSize: 18,

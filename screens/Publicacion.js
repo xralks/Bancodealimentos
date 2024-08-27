@@ -158,6 +158,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginLeft: 10,
     alignItems: 'center',
+    marginBottom:12,
   },
   contactButtonText: {
     fontSize: 18,

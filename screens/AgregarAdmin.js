@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 export default function AgregarAdmin({ navigation }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [dirigido, setDirigido] = useState(false); // Estado para dirigido
+  const [dirigido, setDirigido] = useState(false);
 
   const handleSave = async () => {
     if (!title.trim() || !content.trim()) {
@@ -26,7 +26,7 @@ export default function AgregarAdmin({ navigation }) {
         { 
           title: title.trim(), 
           content: content.trim(), 
-          dirigido: dirigido, // Guardar el estado dirigido
+          dirigido: dirigido,
           user_id: user.id 
         }
       ]);
@@ -34,7 +34,7 @@ export default function AgregarAdmin({ navigation }) {
     if (error) {
       Alert.alert('Error', error.message);
     } else {
-      Alert.alert('Publicación agregada correctamente.', 'Tu publicación será notificada a los Locatarios. Gracias!!!');
+      Alert.alert('Publicación agregada correctamente.', 'Tu publicación será notificada. Gracias!!!');
       navigation.goBack();
     }
   };
@@ -44,7 +44,7 @@ export default function AgregarAdmin({ navigation }) {
       <View>
         <Image source={require('../assets/logo.png')} style={styles.Logo} />
       </View>
-      <Text style={styles.heading}>Crea una Publicación</Text>
+      <Text style={styles.heading}>Crea una Publicación para los Locatarios o Instituciones y ellos serán notificados. </Text>
       <TextInput
         style={styles.input}
         placeholder="Título"
@@ -94,9 +94,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   heading: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
     marginBottom: 20,
+    fontWeight: '500',
+    color: '#333',
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
   input: {
     width: '100%',
@@ -104,7 +107,7 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     borderWidth: 1,
     borderRadius: 10,
-    backgroundColor: '#e0f7fa',
+    backgroundColor: '#fff',
     borderColor: '#77d353',
   },
   button: {
@@ -128,7 +131,7 @@ const styles = StyleSheet.create({
   },
   switchLabel: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '500',
     marginRight: 10,
     color: '#333',
   },

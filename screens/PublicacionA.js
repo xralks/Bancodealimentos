@@ -10,6 +10,7 @@ const PublicacionA = ({ route }) => {
   const [authorFullName, setAuthorFullName] = useState('');
   const [authorAddress, setAuthorAddress] = useState('');
   const [authorType, setAuthorType] = useState('');
+  const [isAccepted, setIsAccepted] = useState(false);
 
   useEffect(() => {
     const fetchPublicacionData = async () => {
@@ -25,6 +26,7 @@ const PublicacionA = ({ route }) => {
         }
 
         setPublicacionData(data);
+        setIsAccepted(data.aceptada === 'aceptada');
         await fetchAuthorDetails(data.user_id);
         setIsLoading(false);
       } catch (error) {
@@ -50,86 +52,62 @@ const PublicacionA = ({ route }) => {
 
       setAuthorFullName(data.full_name);
       setAuthorAddress(data.direccion);
-      setAuthorType(data.tipo); // Obtener el tipo de usuario
+      setAuthorType(data.tipo); 
     } catch (error) {
       console.error('Error fetching author details:', error.message);
     }
   };
 
-  const handleAcceptPress = () => {
-    Alert.alert(
-      'Confirmar',
-      '¿Estás seguro de que deseas aceptar esta publicación?. Esto avisará a los usuarios',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Aceptar',
-          onPress: async () => {
-            try {
-              // Obtener el usuario actual
-              const {
-                data: { user },
-                error: userError,
-              } = await supabase.auth.getUser();
+  const handleAcceptPress = async () => {
+    try {
+      // Obtener el usuario actual
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-              if (userError || !user) {
-                throw new Error('Usuario no autenticado');
-              }
+      if (userError || !user) {
+        throw new Error('Usuario no autenticado');
+      }
 
-              // Actualizar el estado de la publicación
-              const { error: updateError } = await supabase
-                .from('posts')
-                .update({ aceptada: true })
-                .eq('id', itemId);
-
-              if (updateError) {
-                throw updateError;
-              }
-
-              let newContent = publicacionData.content;
-              if (authorType === 'Institución') {
-                newContent = `Institución dice: ${newContent}`;
-              } else if (authorType === 'Locatario') {
-                newContent = `Locatario dice: ${newContent}`;
-              }
-
-              // Insertar la nueva publicación
-              const { error: insertError } = await supabase
-                .from('posts')
-                .insert({
-                  title: publicacionData.title,
-                  content: newContent, // Usar el nuevo contenido modificado
-                  user_id: user.id, // Asignar el user_id del usuario actual
-                  cantidad: publicacionData.cantidad,
-                });
-
-              if (insertError) {
-                throw insertError;
-              }
-
-              // Eliminar la publicación original
-              const { error: deleteError } = await supabase
-                .from('posts')
-                .delete()
-                .eq('id', itemId);
-
-              if (deleteError) {
-                throw deleteError;
-              }
-
-              Alert.alert('Éxito', 'Publicación aceptada, duplicada y eliminada correctamente.');
-            } catch (error) {
-              Alert.alert('Error', 'No se pudo aceptar, duplicar y eliminar la publicación.');
-              console.error('Error accepting, duplicating and deleting publicacion:', error.message);
-            }
+      
+      Alert.alert(
+        'Confirmar',
+        `¿Estás seguro de que deseas ${isAccepted ? 'rechazar' : 'aceptar'} esta publicación?`,
+        [
+          {
+            text: 'Cancelar',
+            style: 'cancel',
           },
-        },
-      ],
-      { cancelable: false }
-    );
+          {
+            text: 'Aceptar',
+            onPress: async () => {
+              try {
+               
+                const { error: updateError } = await supabase
+                  .from('posts')
+                  .update({ aceptada: isAccepted ? 'no aceptada' : 'aceptada' }) 
+                  .eq('id', itemId);
+
+                if (updateError) {
+                  throw updateError;
+                }
+
+               
+                setIsAccepted(!isAccepted);
+
+                
+                Alert.alert('Éxito', `Publicación ${isAccepted ? 'rechazada' : 'aceptada'} correctamente.`);
+              } catch (error) {
+                Alert.alert('Error', `No se pudo ${isAccepted ? 'rechazar' : 'aceptar'} la publicación.`);
+                console.error('Error updating publicacion acceptance:', error.message);
+              }
+            },
+          },
+        ],
+        { cancelable: false }
+      );
+    } catch (error) {
+      Alert.alert('Error', `No se pudo ${isAccepted ? 'rechazar' : 'aceptar'} la publicación.`);
+      console.error('Error updating publicacion acceptance:', error.message);
+    }
   };
 
   if (isLoading) {
@@ -152,18 +130,37 @@ const PublicacionA = ({ route }) => {
           <Text style={styles.detailText}>Publicado por: {authorFullName}</Text>
           <Text style={styles.content}>{publicacionData.content}</Text>
           <View style={styles.detailsContainer}>
-            <Text style={styles.detailText}>Fecha y Hora: {formatDateTime(publicacionData.created_at)}</Text>
-            <Text style={styles.detailText}>Dirección: {authorAddress}</Text>
-            <Text style={styles.detailText}>Cantidad: {publicacionData.cantidad}</Text>
+            <Text style={styles.detailTextBold}>Fecha y Hora:</Text>
+            <Text style={styles.detailText}>{formatDateTime(publicacionData.created_at)}</Text>
+            {authorAddress ? (
+              <>
+                <Text style={styles.detailTextBold}>Ubicación:</Text>
+                <Text style={styles.detailText}>{authorAddress}</Text>
+              </>
+            ) : null}
+            {publicacionData.cantidad ? (
+              <>
+                <Text style={styles.detailTextBold}>Cantidad:</Text>
+                <Text style={styles.detailText}>{publicacionData.cantidad}</Text>
+              </>
+            ) : null}
+            {publicacionData.detalle_pedido ? (
+              <>
+                <Text style={styles.detailTextBold}>Detalle:</Text>
+                <Text style={styles.detailText}>{publicacionData.detalle_pedido}</Text>
+              </>
+            ) : null}
           </View>
         </View>
       </ScrollView>
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.acceptButton} onPress={handleAcceptPress}>
-          <Text style={styles.acceptButtonText}>Clonar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.contactButton} onPress={() => handleContactPress()}>
-          <Text style={styles.contactButtonText}>Aceptar</Text>
+        <TouchableOpacity
+          style={styles.acceptButton}
+          onPress={handleAcceptPress}
+        >
+          <Text style={styles.acceptButtonText}>
+            {isAccepted ? 'Rechazar' : 'Aceptar'}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -216,44 +213,34 @@ const styles = StyleSheet.create({
     borderTopColor: '#ddd',
     paddingTop: 15,
   },
+  detailTextBold: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#777',
+  },
   detailText: {
     fontSize: 16,
     marginBottom: 8,
     color: '#777',
   },
   buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 15,
+    alignItems: 'center',
   },
   acceptButton: {
-    flex: 1,
+    width: '80%',
+    padding: 15,
     backgroundColor: '#77d353',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginRight: 10,
+    borderRadius: 10,
     alignItems: 'center',
-  },
-  contactButton: {
-    flex: 1,
-    backgroundColor: '#2f6f1c',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginLeft: 10,
-    alignItems: 'center',
+    marginBottom:12,
   },
   acceptButtonText: {
     fontSize: 18,
-    fontWeight: 'bold',
     color: '#fff',
-  },
-  contactButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
+  fontWeight: 'bold',
   },
 });
 

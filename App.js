@@ -18,6 +18,7 @@ import PublicacionA from './screens/PublicacionA';
 import HomeA from './screens/HomeA';
 import AgregarInstitucion from './screens/AgregarInstitucion';
 import AgregarLocatario from './screens/AgregarLocatario';
+import Ubicaciones from './screens/Ubicaciones';
 
 const Stack = createStackNavigator();
 
@@ -49,7 +50,7 @@ const App = () => {
                   headerTintColor:"white",
                   headerTitleAlign:"center",
                   headerStyle:{backgroundColor:"#77d353",} }} />
-        <Stack.Screen name="HomeA" component={HomeA} options={{ title: 'HomeA',
+        <Stack.Screen name="HomeA" component={HomeA} options={{ title: 'Home',
                   headerTintColor:"white",
                   headerTitleAlign:"center",
                   headerStyle:{backgroundColor:"#77d353",} }} />
@@ -94,6 +95,11 @@ const App = () => {
                   headerStyle:{backgroundColor:"#77d353",}
          }} />
         <Stack.Screen name="AgregarLocatario" component={AgregarLocatario} options={{ title: 'Donación',
+                  headerTintColor:"white",
+                  headerTitleAlign:"center",
+                  headerStyle:{backgroundColor:"#77d353",}
+         }} />
+        <Stack.Screen name="Ubicaciones" component={Ubicaciones} options={{ title: 'Retiros',
                   headerTintColor:"white",
                   headerTitleAlign:"center",
                   headerStyle:{backgroundColor:"#77d353",}

@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Image, ScrollView, Platform, KeyboardAvoidingView, Modal, TouchableWithoutFeedback } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Image, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
 import { supabase } from '../lib/supabase';
+import CustomPicker from '../components/CustomPicker';
 
 export default function PrimerPaso({ navigation }) {
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [direccion, setDireccion] = useState('');
-  const [patio, setPatio] = useState('');
-  const [calle, setCalle] = useState('');
-  const [local, setLocal] = useState('');
+  const [patio, setPatio] = useState('Seleccione patio');
+  const [calle, setCalle] = useState('Seleccione calle');
+  const [local, setLocal] = useState('Seleccione local');
   const [userType, setUserType] = useState('Seleccione condición');
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState(null);
-  const [pickerVisible, setPickerVisible] = useState(false);
 
   const fetchUserId = async () => {
     const { data: { user }, error } = await supabase.auth.getUser();
@@ -93,53 +92,16 @@ export default function PrimerPaso({ navigation }) {
           value={username}
           onChangeText={setUsername}
         />
-        {Platform.OS === 'ios' ? (
-          <>
-            <TouchableOpacity style={styles.pickerContainer} onPress={() => setPickerVisible(true)}>
-              <Text style={[styles.pickerLabel, userType === 'Seleccione condición' && { color: '#aaa' }]}>{userType}</Text>
-            </TouchableOpacity>
-            <Modal
-              visible={pickerVisible}
-              transparent={true}
-              animationType="slide"
-              onRequestClose={() => setPickerVisible(false)}
-            >
-              <TouchableWithoutFeedback onPress={() => setPickerVisible(false)}>
-                <View style={styles.modalBackdrop} />
-              </TouchableWithoutFeedback>
-              <View style={styles.modalContainer}>
-                <View style={styles.pickerWrapper}>
-                  <Picker
-                    selectedValue={userType}
-                    style={styles.picker}
-                    onValueChange={(itemValue) => {
-                      setUserType(itemValue);
-                      setPickerVisible(false);
-                    }}
-                  >
-                    <Picker.Item label="Seleccione condición" value="Seleccione condición" />
-                    <Picker.Item label="Locatario" value="Locatario" />
-                    <Picker.Item label="Institución" value="Institución" />
-                    <Picker.Item label="Administrador" value="Administrador" />
-                  </Picker>
-                </View>
-              </View>
-            </Modal>
-          </>
-        ) : (
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={userType}
-              style={styles.androidPicker}
-              onValueChange={(itemValue) => setUserType(itemValue)}
-            >
-              <Picker.Item label="Seleccione condición" value="Seleccione condición" />
-              <Picker.Item label="Locatario" value="Locatario" />
-              <Picker.Item label="Institución" value="Institución" />
-              <Picker.Item label="Administrador" value="Administrador" />
-            </Picker>
-          </View>
-        )}
+        <CustomPicker
+          selectedValue={userType}
+          onValueChange={setUserType}
+          options={[
+            { label: "Seleccione condición", value: "Seleccione condición" },
+            { label: "Locatario", value: "Locatario" },
+            { label: "Institución", value: "Institución" },
+            { label: "Administrador", value: "Administrador" },
+          ]}
+        />
         {userType === 'Locatario' && (
           <Image source={require('../assets/mapa.jpeg')} style={styles.mapImage} />
         )}
@@ -148,23 +110,64 @@ export default function PrimerPaso({ navigation }) {
             <Text style={styles.welcomeText}>
             Selecciona tu ubicación: indícanos en qué patio, calle y local te encuentras.
             </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Patio"
-              value={patio}
-              onChangeText={setPatio}
+            <CustomPicker
+              selectedValue={patio}
+              onValueChange={setPatio}
+              options={[
+                { label: "Seleccione patio", value: "Seleccione patio" },
+                { label: "Patio Papas", value: "Patio Papas" },
+                { label: "Patio Norte", value: "Patio Norte" },
+                { label: "Patio Uno", value: "Patio Uno" },
+              ]}
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Calle"
-              value={calle}
-              onChangeText={setCalle}
+            <CustomPicker
+              selectedValue={calle}
+              onValueChange={setCalle}
+              options={[
+                { label: "Seleccione calle", value: "seleccionecalle" },
+                { label: "Calle 10 (Siberia)", value: "calle10siberia1" },
+                { label: "Calle 16", value: "calle16" },
+                { label: "Calle La Rural", value: "callelarural1" },
+                { label: "Calle 15 sur", value: "calle15sur" },
+                { label: "Calle 5 sur", value: "calle5sur" },
+                { label: "Calle 1 Norte", value: "calle1norte1" },
+                { label: "Calle 2 norte", value: "calle2norte" },
+                { label: "Calle 5 oriente", value: "calle5oriente1" },
+                { label: "Calle 11 norte", value: "calle11norte1" },
+                { label: "Calle 7 oriente", value: "calle7oriente1" },
+                { label: "Calle 15 Norte", value: "calle15norte1" },
+                { label: "Calle 3 Norte", value: "calle3norte" },
+                { label: "Calle 6 Norte", value: "calle6norte" },
+                { label: "Calle 5 oriente", value: "calle5oriente2" },
+                { label: "Calle 10 (Siberia)", value: "calle10siberia2" },
+                { label: "Calle 13", value: "calle13" },
+                { label: "Calle 14", value: "calle14" },
+                { label: "Calle 7 oriente", value: "calle7oriente2" },
+                { label: "Calle 8 Oriente", value: "calle8oriente" },
+                { label: "Calle 12", value: "calle12" },
+                { label: "Calle 5 norte", value: "calle5norte" },
+                { label: "Calle 11 Norte", value: "calle11norte2" },
+                { label: "Calle 9 oriente", value: "calle9oriente" },
+                { label: "Calle 4 Poniente", value: "calle4poniente1" },
+                { label: "Calle 4 Poniente", value: "calle4poniente2" },
+                { label: "Calle 9 Poniente", value: "calle9poniente" },
+                { label: "Calle 10 (Siberia)", value: "calle10siberia3" },
+                { label: "Calle Principal 1", value: "calleprincipal1" },
+                { label: "Calle Principal 2", value: "calleprincipal2" },
+                { label: "Calle Principal 3", value: "calleprincipal3" },
+                { label: "Calle La Rural", value: "callelarural2" },
+                { label: "Calle 1 Norte", value: "calle1norte2" },
+                { label: "Calle 15 Norte", value: "calle15norte2" },
+              ]}
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Local"
-              value={local}
-              onChangeText={setLocal}
+            <CustomPicker
+              selectedValue={local}
+              onValueChange={setLocal}
+              options={[
+                { label: "Seleccione local", value: "Seleccione local" },
+                { label: "Local 101", value: "Local 101" },
+                { label: "Local 102", value: "Local 102" },
+              ]}
             />
           </>
         )}
@@ -231,47 +234,7 @@ const styles = StyleSheet.create({
     borderColor: '#77d353',
     borderRadius: 10,
     marginBottom: 10,
-    backgroundColor: '#e0f7fa',
-  },
-  pickerContainer: {
-    width: '100%',
-    borderWidth: 1,
-    borderColor: '#77d353',
-    borderRadius: 10,
-    marginBottom: 10,
-    backgroundColor: '#e0f7fa',
-    justifyContent: 'center',
-    paddingVertical: 10, 
-  },
-  pickerLabel: {
-    fontSize: 16,
-    color: '#333',
-    paddingHorizontal: 10, 
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    flex: 1,
-  },
-  pickerWrapper: {
-    width: '80%',
     backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 10,
-  },
-  picker: {
-    width: '100%',
-    height: 200,
-  },
-  androidPicker: {
-    height: 40,  
-    justifyContent: 'center',
   },
   mapImage: {
     width: '100%',
