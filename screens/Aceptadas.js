@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator , Image} from 'react-native';
 import { supabase } from '../lib/supabase';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const Aceptadas = () => {
   const [posts, setPosts] = useState([]);
   const [userId, setUserId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const trueStockId = '02c87707-646a-45f1-a641-53d8278cb614';
 
+  // Obtener el usuario actual
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { user }, error } = await supabase.auth.getUser();
@@ -20,6 +23,17 @@ const Aceptadas = () => {
     fetchUser();
   }, []);
 
+  const renderEmptyComponent = () => (
+    <View style={styles.emptyContainer}>
+      <Image
+        source={require('../assets/publicacion.png')}
+        style={styles.notpubli}
+      />
+      <Text style={styles.emptyText}>Aún no hay publicaciones aceptadas.</Text>
+    </View>
+  );
+
+  
   useEffect(() => {
     if (userId) {
       async function fetchData() {
@@ -28,7 +42,7 @@ const Aceptadas = () => {
             .from('posts')
             .select('*')
             .eq('user_id', userId)
-            .eq('aceptada', 'aceptada') 
+            .in('aceptada', ['aceptada', 'institucionaceptada'])
             .order('created_at', { ascending: false });
 
           if (error) {
@@ -36,7 +50,24 @@ const Aceptadas = () => {
           }
 
           if (data) {
-            setPosts(data);
+            
+            const updatedPosts = await Promise.all(
+              data.map(async (post) => {
+                const { data: postProductos, error: postProductosError } = await supabase
+                  .from('post_productos')
+                  .select('stock_id')
+                  .eq('post_id', post.id);
+
+                if (postProductosError) throw postProductosError;
+
+                
+                const hasTrueStock = postProductos.some((producto) => producto.stock_id === trueStockId);
+
+                return { ...post, hasTrueStock };
+              })
+            );
+
+            setPosts(updatedPosts);
             setIsLoading(false);
           }
         } catch (error) {
@@ -49,12 +80,54 @@ const Aceptadas = () => {
     }
   }, [userId]);
 
+  // Renderizar el ícono basado en el estado de la publicación
+  const renderIcon = (hasTrueStock, isInstitucionAceptada) => {
+    if (isInstitucionAceptada) {
+      // Cambiar texto para publicaciones 'institucionaceptada'
+      if (hasTrueStock) {
+        return (
+          <View style={styles.iconWithText}>
+            <Icon name="check-circle" size={28} color="#3b911f" style={styles.checkButton} />
+            <Text style={styles.statusText}>Productos recibidos</Text>
+          </View>
+        );
+      } else {
+        return (
+          <View style={styles.iconWithText}>
+            <Icon name="progress-clock" size={28} color="#ff9f00" style={styles.checkButton} />
+            <Text style={styles.statusText}>Puedes realizar el retiro</Text>
+          </View>
+        );
+      }
+    } else {
+      // Texto para otras publicaciones (que no son 'institucionaceptada')
+      if (hasTrueStock) {
+        return (
+          <View style={styles.iconWithText}>
+            <Icon name="check-circle" size={28} color="#3b911f" style={styles.checkButton} />
+            <Text style={styles.statusText}>Producto retirado</Text>
+          </View>
+        );
+      } else {
+        return (
+          <View style={styles.iconWithText}>
+            <Icon name="progress-clock" size={28} color="#ff9f00" style={styles.checkButton} />
+            <Text style={styles.statusText}>Retiro en camino</Text>
+          </View>
+        );
+      }
+    }
+  };
 
   const renderItem = ({ item }) => (
     <View style={styles.item}>
       <Text style={styles.title}>{item.title}</Text>
       <Text style={styles.content}>{item.content}</Text>
       <Text style={styles.createdAt}>{new Date(item.created_at).toLocaleString()}</Text>
+      <View style={styles.iconContainer}>
+        <Text style={styles.estado}>Estado:</Text>
+        {renderIcon(item.hasTrueStock, item.aceptada === 'institucionaceptada')}
+      </View>
     </View>
   );
 
@@ -72,6 +145,7 @@ const Aceptadas = () => {
         data={posts}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderItem}
+        ListEmptyComponent={renderEmptyComponent}
       />
     </View>
   );
@@ -87,12 +161,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  heading: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
   },
   item: {
     backgroundColor: '#ffffff',
@@ -112,36 +180,61 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 5,
-    color:'#0f290a',
+    color: '#0f290a',
   },
   content: {
     fontSize: 16,
     color: '#333',
     marginBottom: 10,
   },
+  estado: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 10,
+    fontWeight: '600',
+  },
   createdAt: {
     fontSize: 14,
     color: '#254b1c',
     marginBottom: 5,
   },
-  navButtonElim: {
-    backgroundColor: '#ed4646',
-    borderRadius: 5,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginTop: 5,
+  checkButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 10,
   },
-  navButtonEdit: {
-    backgroundColor: '#77d353',
-    borderRadius: 5,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginTop: 5,
+  iconContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  navButtonText: {
+  iconWithText: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusText: {
     fontSize: 16,
-    color: '#fff',
+    marginBottom: 11,
+    color: '#333',
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  notpubli: {
+    width:100,
+    height:100,
+  },
+  emptyText: {
+    fontSize: 18,
+    color: '#254b1c',
+    marginTop: 10,
     textAlign: 'center',
+    fontWeight: 'bold',
   },
 });
 

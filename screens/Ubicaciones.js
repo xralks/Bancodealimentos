@@ -1,74 +1,138 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, FlatList, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, FlatList, TouchableOpacity, Alert, Image } from 'react-native';
 import { supabase } from '../lib/supabase';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const Ubicaciones = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [locations, setLocations] = useState([]);
 
-  useEffect(() => {
-    const fetchAcceptedPosts = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('posts') 
-          .select('id, title, content, user_id')
-          .eq('aceptada', 'aceptada') 
-          .order('created_at', { ascending: false });
+  const[origin, setOrigin]= React.useState({
+    latitude: -33.483500,  // Destino
+    longitude: -70.684200,
+  });
+  const [destination, setDestination] = React.useState({
+    latitude: -33.48297530262276, 
+    longitude:-70.68298352795183,
+  });
 
-        if (error) {
-          throw error;
+  const fetchAcceptedPosts = async () => {
+    try {
+      const { data: posts, error: postsError } = await supabase
+        .from('posts')
+        .select('id, title, content, user_id')
+        .eq('aceptada', 'aceptada');
+
+      if (postsError) {
+        throw postsError;
+      }
+
+      if (posts.length > 0) {
+        
+        const { data: postProducts, error: postProductsError } = await supabase
+          .from('post_productos')
+          .select('post_id, stock_id')
+          .eq('stock_id', '3c5b1444-7b0c-4d87-a129-ee0e95f76586'); // stock en TRUE
+
+        if (postProductsError) {
+          throw postProductsError;
         }
 
-        const postIds = data.map(post => post.id);
+        
+        const filteredPosts = posts.filter(post => 
+          postProducts.some(pp => pp.post_id === post.id)
+        );
 
-        if (postIds.length > 0) {
-          const { data: postsData, error: postsError } = await supabase
-            .from('posts')
-            .select('id, title, content, user_id')
-            .in('id', postIds);
+        const locationsData = await Promise.all(filteredPosts.map(async (post) => {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('direccion')
+            .eq('id', post.user_id)
+            .single();
 
-          if (postsError) {
-            throw postsError;
+          if (profileError) {
+            throw profileError;
           }
 
-          const locationsData = await Promise.all(postsData.map(async (post) => {
-            const { data: profileData, error: profileError } = await supabase
-              .from('profiles')
-              .select('direccion')
-              .eq('id', post.user_id)
-              .single();
+          return {
+            ...post,
+            direccion: profileData.direccion,
+          };
+        }));
 
-            if (profileError) {
-              throw profileError;
-            }
-
-            return {
-              ...post,
-              direccion: profileData.direccion,
-            };
-          }));
-
-          setLocations(locationsData);
-        }
-
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error fetching accepted posts:', error.message);
-        setIsLoading(false);
+        setLocations(locationsData);
       }
-    };
 
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error al obtener publicaciones aceptadas:', error.message);
+      setIsLoading(false);
+    }
+  };
+  const renderEmptyComponent = () => (
+    <View style={styles.emptyContainer}>
+      <Image
+        source={require('../assets/notlocacion.png')}
+        style={styles.notpubli}
+      />
+      <Text style={styles.emptyText}>Aún no hay ubicaciones.</Text>
+    </View>
+  );
+
+  useEffect(() => {
     fetchAcceptedPosts();
   }, []);
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#94e175" />
-      </View>
+  const handleCheckPress = (postId) => {
+    Alert.alert(
+      'Confirmación',
+      '¿Fue recogido el producto correctamente?, si es asi selecciona aceptar.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Aceptar',
+          onPress: async () => {
+            try {
+              
+              const { data, error } = await supabase
+                .from('post_productos')
+                .select('stock_id')
+                .eq('post_id', postId);
+
+              if (error) {
+                throw error;
+              }
+
+              const falseStockId = '3c5b1444-7b0c-4d87-a129-ee0e95f76586'; // ID para FALSE
+              const trueStockId = '02c87707-646a-45f1-a641-53d8278cb614'; // ID para TRUE
+              
+              
+              const newStockId = data[0].stock_id === falseStockId ? trueStockId : falseStockId;
+
+              
+              const { error: updateError } = await supabase
+                .from('post_productos')
+                .update({ stock_id: newStockId })
+                .eq('post_id', postId);
+
+              if (updateError) {
+                throw updateError;
+              }
+
+              Alert.alert('Éxito', 'Los productos han sido agregados correctamente al stock.');
+              
+              
+              fetchAcceptedPosts();
+            } catch (error) {
+              console.error('Error al actualizar el stock:', error.message);
+              Alert.alert('Error', 'No se pudo actualizar el estado del stock.');
+            }
+          },
+        },
+      ]
     );
-  }
+  };
 
   const renderItem = ({ item }) => (
     <View style={styles.itemContainer}>
@@ -77,7 +141,7 @@ const Ubicaciones = ({ navigation }) => {
           <Text style={styles.title}>{item.title}</Text>
           <Text style={styles.address}>{item.direccion}</Text>
         </View>
-        <TouchableOpacity style={styles.checkButton}>
+        <TouchableOpacity style={styles.checkButton} onPress={() => handleCheckPress(item.id)}>
           <Icon name="check" size={24} color="#fff" />
         </TouchableOpacity>
         <TouchableOpacity
@@ -90,13 +154,35 @@ const Ubicaciones = ({ navigation }) => {
     </View>
   );
 
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#94e175" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <FlatList
         data={locations}
         renderItem={renderItem}
+        ListEmptyComponent={renderEmptyComponent}
         keyExtractor={item => item.id.toString()}
       />
+        <View style={styles.containermap}>
+          <MapView style={styles.map}
+          initialRegion={{
+            latitude: origin.latitude,
+            longitude: origin.longitude,
+            latitudeDelta: 0.008,
+            longitudeDelta:0.008
+          }}
+          >
+          <Marker coordinate={origin} title="Origen" description="Este es el punto de inicio" />
+          <Marker coordinate={destination} title="destino" description="Este es el punto de destino" />
+          </MapView>
+        </View>
     </View>
   );
 };
@@ -149,6 +235,33 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  containermap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  map:{
+    width:'70%',
+    height:'90%',
+    marginBottom: 50,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  notpubli: {
+    width:100,
+    height:100,
+  },
+  emptyText: {
+    fontSize: 18,
+    color: '#254b1c',
+    marginTop: 10,
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
 });
 

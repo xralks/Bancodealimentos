@@ -13,6 +13,7 @@ export default function PrimerPaso({ navigation }) {
   const [userType, setUserType] = useState('Seleccione condición');
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState(null);
+  const [contrasenaIngresada, setContrasenaIngresada] = useState(''); // Para la contraseña
 
   const fetchUserId = async () => {
     const { data: { user }, error } = await supabase.auth.getUser();
@@ -27,6 +28,34 @@ export default function PrimerPaso({ navigation }) {
     fetchUserId();
   }, []);
 
+  const verificarContrasenaAdmin = async (contrasenaIngresada) => {
+    const { data, error } = await supabase
+      .from('elite') // Asegúrate de que este sea el nombre correcto de la tabla
+      .select('comparacion') // Asegúrate de que esta sea la columna correcta que contiene la contraseña
+      .single(); // Obtiene solo un registro
+
+    if (error) {
+      console.error('Error fetching password:', error.message);
+      Alert.alert('Error', 'No se pudo obtener la contraseña del administrador.');
+      return false; // Retorna false en caso de error
+    }
+
+    if (!data) {
+      Alert.alert('Error', 'No se encontró la contraseña del administrador.');
+      return false; 
+    }
+
+    const contrasenaAlmacenada = data.comparacion; // Acceder a la columna correcta
+
+    const esCorrecta = contrasenaIngresada === contrasenaAlmacenada;
+
+    if (!esCorrecta) {
+      Alert.alert('Error', 'Contraseña incorrecta.');
+    }
+
+    return esCorrecta; // Retorna true o false según la comparación
+  };
+
   const handleCompleteProfile = async () => {
     try {
       setLoading(true);
@@ -40,6 +69,11 @@ export default function PrimerPaso({ navigation }) {
       if (userType === 'Locatario') {
         finalDireccion = `${patio}, ${calle}, ${local}`;
       } else if (userType === 'Administrador') {
+        // Verificar contraseña antes de continuar
+        const contrasenaValida = await verificarContrasenaAdmin(contrasenaIngresada);
+        if (!contrasenaValida) {
+          return; // Detener la operación si la contraseña es incorrecta
+        }
         finalDireccion = 'Lo Valledor';
       }
 
@@ -180,12 +214,21 @@ export default function PrimerPaso({ navigation }) {
           />
         )}
         {userType === 'Administrador' && (
-          <TextInput
-            style={[styles.input, { backgroundColor: '#f0f0f0' }]}
-            placeholder="Dirección"
-            value="Lo Valledor"
-            editable={false}
-          />
+          <>
+            <TextInput
+              style={[styles.input, { backgroundColor: '#f0f0f0' }]}
+              placeholder="Dirección"
+              value="Lo Valledor"
+              editable={false}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Ingresa la contraseña"
+              value={contrasenaIngresada}
+              onChangeText={setContrasenaIngresada}
+              secureTextEntry
+            />
+          </>
         )}
       </ScrollView>
       <View style={styles.buttonContainer}>

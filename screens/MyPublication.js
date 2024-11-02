@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, Image, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
 
-const MisPublicaciones = () => {
+const MisPublicaciones = ({ navigation }) => {
   const [posts, setPosts] = useState([]);
   const [userId, setUserId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,13 +61,24 @@ const MisPublicaciones = () => {
           text: 'Eliminar',
           onPress: async () => {
             try {
-              const { error } = await supabase
+              
+              const { error: deletePostProductosError } = await supabase
+                .from('post_productos')
+                .delete()
+                .eq('post_id', postId);
+
+              if (deletePostProductosError) {
+                throw deletePostProductosError;
+              }
+
+              
+              const { error: deletePostError } = await supabase
                 .from('posts')
                 .delete()
                 .eq('id', postId);
               
-              if (error) {
-                throw error;
+              if (deletePostError) {
+                throw deletePostError;
               }
 
               
@@ -82,9 +93,20 @@ const MisPublicaciones = () => {
       { cancelable: true }
     );
   };
-
+  const renderEmptyComponent = () => (
+    <View style={styles.emptyContainer}>
+      <Image
+        source={require('../assets/publicacion.png')}
+        style={styles.notpubli}
+      />
+      <Text style={styles.emptyText}>Aún no hay publicaciones.</Text>
+    </View>
+  );
   const renderItem = ({ item }) => (
-    <View style={styles.item}>
+    <TouchableOpacity
+      style={styles.item}
+      onPress={() => navigation.navigate('Informacion', { itemId: item.id })}
+    >
       <Image
         source={require('../assets/postIma.jpg')}
         style={styles.image}
@@ -92,16 +114,22 @@ const MisPublicaciones = () => {
       <Text style={styles.title}>{item.title}</Text>
       <Text style={styles.content}>{item.content}</Text>
       <Text style={styles.createdAt}>{new Date(item.created_at).toLocaleString()}</Text>
-      <TouchableOpacity 
-        style={styles.navButtonElim}
-        onPress={() => handleDelete(item.id)}
-      >
-        <Text style={styles.navButtonText}>Eliminar</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.navButtonEdit}>
-        <Text style={styles.navButtonText}>Editar</Text>
-      </TouchableOpacity>
-    </View>
+  
+      {item.aceptada === 'aceptada' || item.aceptada === 'institucionaceptada' ? (
+        <Text style={styles.acceptedText}>Esta publicación ya fue aceptada. Para consultar su estado, dirígete a la sección de <TouchableOpacity style={styles.registerLink} onPress={() => navigation.navigate('Aceptadas')}>
+        <Text style={styles.registerText}>Estado de publicaciones</Text>
+        </TouchableOpacity></Text>
+      ) : (
+        <>
+          <TouchableOpacity 
+            style={styles.navButtonElim}
+            onPress={() => handleDelete(item.id)}
+          >
+            <Text style={styles.navButtonText}>Eliminar publicación</Text>
+          </TouchableOpacity>
+        </>
+      )}
+    </TouchableOpacity>
   );
 
   if (isLoading) {
@@ -118,6 +146,7 @@ const MisPublicaciones = () => {
         data={posts}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderItem}
+        ListEmptyComponent={renderEmptyComponent}
       />
     </View>
   );
@@ -133,12 +162,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  heading: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
   },
   item: {
     backgroundColor: '#ffffff',
@@ -194,6 +217,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     textAlign: 'center',
+  },
+  acceptedText: {
+    color: '#10290a',
+    marginTop: 10,
+    fontWeight: '500',
+    fontSize: 14,
+  },
+  registerLink: {
+    marginTop: 20,
+  },
+  registerText: {
+    fontSize: 14,
+    marginTop: 5,
+    color: '#77d353',
+    fontWeight: 'bold',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  notpubli: {
+    width:100,
+    height:100,
+  },
+  emptyText: {
+    fontSize: 18,
+    color: '#254b1c',
+    marginTop: 10,
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
 });
 

@@ -80,7 +80,7 @@ export default function UserProfile({ navigation }) {
         style={[styles.input, styles.readOnlyInput]}
         placeholder="Dirección"
         value={direccion}
-        onChangeText={setDireccion}
+        editable={false}
       />
       <TextInput
         style={[styles.input, styles.readOnlyInput]}

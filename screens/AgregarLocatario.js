@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image, ScrollView } from 'react-native';
 import { supabase } from '../lib/supabase';
 import CustomPicker from '../components/CustomPicker';
@@ -6,17 +6,33 @@ import CustomPicker from '../components/CustomPicker';
 export default function AgregarLocatario({ navigation }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [detallePedido, setDetallePedido] = useState([{ type: '', name: '', quantity: '' }]);
+  const [detallePedido, setDetallePedido] = useState([{ product_id: '', quantity: '' }]);
+  const [productos, setProductos] = useState([]);
+
+  // Cargar productos desde la base de datos al iniciar el componente
+  useEffect(() => {
+    const fetchProductos = async () => {
+      const { data, error } = await supabase
+        .from('productos')
+        .select('id, nombrep, descripcion');
+      
+      if (error) {
+        Alert.alert('Error', 'No se pudo cargar los productos');
+      } else {
+        setProductos(data);
+      }
+    };
+
+    fetchProductos();
+  }, []);
 
   const handleSave = async () => {
-    if (!title.trim() || !content.trim() || detallePedido.some(item => !item.type || !item.name || !item.quantity)) {
+    if (!title.trim() || !content.trim() || detallePedido.some(item => !item.product_id || !item.quantity)) {
       Alert.alert('Error', 'Por favor, complete todos los campos.');
       return;
     }
 
-    
-    const cantidadStr = detallePedido.map(item => `${item.type}: ${item.name} (${item.quantity} kg)`).join(', ');
-
+    // Obtener usuario actual
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     if (userError) {
@@ -24,19 +40,39 @@ export default function AgregarLocatario({ navigation }) {
       return;
     }
 
-    const { error } = await supabase
+    // Inserción del post en la tabla `posts`
+    const { data: post, error: postError } = await supabase
       .from('posts')
       .insert([
         { 
           title: title.trim(), 
           content: content.trim(),
-          cantidad: cantidadStr,  
           user_id: user.id 
         }
-      ]);
+      ])
+      .select();
 
-    if (error) {
-      Alert.alert('Error', error.message);
+    if (postError) {
+      Alert.alert('Error', postError.message);
+      return;
+    }
+
+    // Obtener el ID del post recién creado
+    const postId = post[0].id;
+
+    // Inserción de los productos en la tabla `post_productos`
+    const detalleProductos = detallePedido.map(item => ({
+      post_id: postId,
+      productos_id: item.product_id,
+      cantidadp: item.quantity
+    }));
+
+    const { error: detalleError } = await supabase
+      .from('post_productos')
+      .insert(detalleProductos);
+
+    if (detalleError) {
+      Alert.alert('Error', detalleError.message);
     } else {
       Alert.alert('Publicación agregada correctamente.', 'Tu publicación será notificada al Banco de Alimentos. ¡Gracias!');
       navigation.goBack();
@@ -45,20 +81,51 @@ export default function AgregarLocatario({ navigation }) {
 
   const handleItemChange = (index, field, value) => {
     const newDetallePedido = [...detallePedido];
+    
+    if (field === 'product_id') {
+      // Verificar si el producto ya ha sido añadido
+      const existeProductoDuplicado = newDetallePedido.some(
+        (item, i) => item.product_id === value && i !== index
+      );
+      
+      if (existeProductoDuplicado) {
+        Alert.alert('Error', 'Este producto ya está en la lista. Elige otro o suma la cantidad total de Kg a donar del producto');
+        return;
+      }
+    }
+
     newDetallePedido[index][field] = value;
     setDetallePedido(newDetallePedido);
   };
 
   const handleAddItem = () => {
-    setDetallePedido([...detallePedido, { type: '', name: '', quantity: '' }]);
+    // Verifica si ya existe un producto en blanco (aún no seleccionado)
+    const existeProductoDuplicado = detallePedido.some(item => item.product_id === '');
+
+    if (existeProductoDuplicado) {
+      Alert.alert('Error', 'Has añadido un producto vacio. Selecciona uno para añadir otro.');
+      return;
+    }
+
+    setDetallePedido([...detallePedido, { product_id: '', quantity: '' }]);
   };
 
-  
-  const typeOptions = [
-    { label: 'Seleccione tipo de producto', value: '' },
-    { label: 'Fruta', value: 'Fruta' },
-    { label: 'Verdura', value: 'Verdura' },
-  ];
+  const handleDeleteItem = (index) => {
+    if (detallePedido.length > 1) {
+      const newDetallePedido = detallePedido.filter((_, i) => i !== index);
+      setDetallePedido(newDetallePedido);
+    }
+  };
+  // Crear opciones de productos para el picker
+  const productOptions = productos.map(producto => ({
+    label: `${producto.nombrep} (${producto.descripcion})`,
+    value: producto.id
+  }));
+
+  const getProductName = (productId) => {
+    const product = productos.find(p => p.id === productId);
+    return product ? product.nombrep : '';
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
@@ -81,19 +148,23 @@ export default function AgregarLocatario({ navigation }) {
           multiline
         />
 
-        {detallePedido.map((item, index) => (
+          {detallePedido.map((item, index) => (
           <View key={index} style={styles.itemContainer}>
-            <Text style={styles.productTitle}>Producto n°{index + 1}</Text>
+            <View style={styles.productHeader}>
+              <Text style={styles.productTitle}>Producto n°{index + 1}</Text>
+              {index > 0 && (
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => handleDeleteItem(index)}
+                >
+                  <Text style={styles.deleteButtonText}>Eliminar producto n°{index + 1}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
             <CustomPicker 
-              selectedValue={item.type}
-              onValueChange={(value) => handleItemChange(index, 'type', value)}
-              options={typeOptions}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Nombre fruta o verdura"
-              value={item.name}
-              onChangeText={(value) => handleItemChange(index, 'name', value)}
+              selectedValue={getProductName(item.product_id)}
+              onValueChange={(value) => handleItemChange(index, 'product_id', value)}
+              options={productOptions}
             />
             <TextInput
               style={styles.input}
@@ -106,7 +177,7 @@ export default function AgregarLocatario({ navigation }) {
         ))}
 
         <TouchableOpacity style={styles.addButton} onPress={handleAddItem}>
-          <Text style={styles.buttonText}>Añadir otro</Text>
+          <Text style={styles.buttonText}>Añadir otro +</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.button} onPress={handleSave}>
@@ -168,9 +239,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   addButton: {
-    width: '100%',
+    width: '50%',
     padding: 15,
-    backgroundColor: '#77d353',
+    backgroundColor: '#56a039',
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 10,
@@ -186,5 +257,20 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 10,
+  },
+  productHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  deleteButton: {
+    backgroundColor: '#ff4444',
+    padding: 5,
+    borderRadius: 5,
+  },
+  deleteButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
 });

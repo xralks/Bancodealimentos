@@ -11,91 +11,131 @@ export default function Home({ navigation }) {
   const [numPosts, setNumPosts] = useState(0);
   const [posts, setPosts] = useState([]);
   const [userId, setUserId] = useState(null);
-  const [refreshing, setRefreshing] = useState(false); 
+  const [refreshing, setRefreshing] = useState(false);
+  const [acceptedPostsCount, setAcceptedPostsCount] = useState(0);
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error) {
-        Alert.alert('Error', error.message);
-      } else {
-        setUserId(user.id);
-
-        const { data, error: profileError } = await supabase
-          .from('profiles')
-          .select('username, full_name, avatar_url, tipo')
-          .eq('id', user.id)
-          .single();
-
-        if (profileError) {
-          Alert.alert('Error', profileError.message);
-        } else {
-          setUsername(data.username);
-          setFullName(data.full_name);
-          setAvatarUrl(data.avatar_url);
-          setTipo(data.tipo);
-          fetchPosts(user.id, data.tipo);
-          fetchPostsCount(user.id);
-        }
-      }
-    };
-
-    const fetchPosts = async (userId, userTipo) => {
-      const { data, error } = await supabase
-        .from('posts')
-        .select('*, profiles(full_name, tipo)')
-        .neq('user_id', userId)
-        .eq('profiles.tipo', 'Administrador') 
-        .eq('dirigido', userTipo === 'Institución')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        Alert.alert('Error', error.message);
-      } else {
-        const filteredPosts = data.filter(post => post.profiles);
-        setPosts(filteredPosts);
-      }
-    };
-
-    const fetchPostsCount = async (userId) => {
-      const { count, error } = await supabase
-        .from('posts')
-        .select('id', { count: 'exact' })
-        .eq('user_id', userId);
-
-      if (error) {
-        Alert.alert('Error', error.message);
-      } else {
-        setNumPosts(count);
-      }
-    };
-
-    fetchProfile();
+    fetchProfile().catch(error => console.error('Error in fetchProfile:', error));
   }, []);
 
-  const fetchData = async () => {
-    setRefreshing(true); 
+  const fetchProfile = async () => {
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) throw error;
+
+      setUserId(user.id);
+
+      const { data, error: profileError } = await supabase
+        .from('profiles')
+        .select('username, full_name, avatar_url, tipo')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      setUsername(data.username);
+      setFullName(data.full_name);
+      setAvatarUrl(data.avatar_url);
+      setTipo(data.tipo);
+
+      await Promise.all([
+        fetchPosts(user.id, data.tipo),
+        fetchPostsCount(user.id),
+        data.tipo === 'Locatario' ? fetchAcceptedPostsCount(user.id) : Promise.resolve()
+      ]);
+    } catch (error) {
+      console.error('Error in fetchProfile:', error);
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  const fetchPosts = async (userId, userTipo) => {
     try {
       const { data, error } = await supabase
         .from('posts')
         .select('*, profiles(full_name, tipo)')
         .neq('user_id', userId)
-        .eq('profiles.tipo', 'Administrador') 
-        .eq('dirigido', tipo === 'Institución')
+        .eq('profiles.tipo', 'Administrador')
+        .eq('dirigido', userTipo === 'Institución')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        Alert.alert('Error', error.message);
-      } else {
-        const filteredPosts = data.filter(post => post.profiles);
-        setPosts(filteredPosts);
-      }
+      if (error) throw error;
+
+      const filteredPosts = data.filter(post => post && post.profiles);
+      setPosts(filteredPosts);
     } catch (error) {
-      console.error('Error fetching data:', error.message);
-    } finally {
-      setRefreshing(false); 
+      console.error('Error in fetchPosts:', error);
+      Alert.alert('Error', 'Failed to fetch posts');
     }
   };
+
+  const fetchPostsCount = async (userId) => {
+    try {
+      const { count, error } = await supabase
+        .from('posts')
+        .select('id', { count: 'exact' })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      setNumPosts(count);
+    } catch (error) {
+      console.error('Error in fetchPostsCount:', error);
+      Alert.alert('Error', 'Failed to fetch posts count');
+    }
+  };
+
+  const fetchAcceptedPostsCount = async (userId) => {
+    try {
+      // Primero, obtenemos los post_id de post_productos
+      const { data: postProductos, error: postProductosError } = await supabase
+        .from('post_productos')
+        .select('post_id')
+        .eq('stock_id', '02c87707-646a-45f1-a641-53d8278cb614');
+
+      if (postProductosError) throw postProductosError;
+
+      // Extraemos los post_id en un array
+      const postIds = postProductos.map(item => item.post_id);
+
+      // Ahora, contamos los posts aceptados que coinciden con estos post_id
+      const { count, error } = await supabase
+        .from('posts')
+        .select('id', { count: 'exact' })
+        .eq('user_id', userId)
+        .eq('aceptada', 'aceptada')
+        .in('id', postIds);
+
+      if (error) throw error;
+
+      setAcceptedPostsCount(count || 0);
+    } catch (error) {
+      console.error('Error in fetchAcceptedPostsCount:', error);
+      Alert.alert('Error', 'Failed to fetch accepted posts count');
+    }
+  };
+
+  const fetchData = async () => {
+    setRefreshing(true);
+    try {
+      await fetchProfile();
+    } catch (error) {
+      console.error('Error in fetchData:', error);
+      Alert.alert('Error', 'Failed to refresh data');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const renderEmptyComponent = () => (
+    <View style={styles.emptyContainer}>
+      <Image
+        source={require('../assets/publicacion.png')}
+        style={styles.notpubli}
+      />
+      <Text style={styles.emptyText}>Aún no hay publicaciones.</Text>
+    </View>
+  );
 
   const navigateToMyPublications = () => {
     navigation.navigate('MyPublication');
@@ -118,7 +158,7 @@ export default function Home({ navigation }) {
   };
 
   const renderPost = ({ item }) => {
-    if (!item.profiles) {
+    if (!item || !item.profiles) {
       return null;
     }
 
@@ -171,12 +211,15 @@ export default function Home({ navigation }) {
       </View>
       <View style={styles.statsContainer}>
         <Text style={styles.statsText}>{numPosts} Mis Publicaciones</Text>
-        <Text style={styles.statsText}>{tipo === 'Institución' ? '0 Recibidas' : '0 Enviadas'}</Text>
+        <Text style={styles.statsText}>
+          {tipo === 'Institución' ? '0 Recibidas' : `${acceptedPostsCount} Donaciones`}
+        </Text>
       </View>
       <FlatList
         data={posts}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderPost}
+        ListEmptyComponent={renderEmptyComponent}
         style={styles.postsList}
         refreshControl={
           <RefreshControl
@@ -187,13 +230,16 @@ export default function Home({ navigation }) {
       />
       <View style={styles.navContainer}>
         <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('Misdatos')}>
-        <Icon name="account-outline" size={28} color="#3b911f" />
+          <Icon name="account-outline" size={28} color="#3b911f" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('MyPublication')}>
           <Icon name="file-document" size={28} color="#3b911f" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navButton}onPress={() => navigation.navigate('Aceptadas')}>
+        <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('Aceptadas')}>
           <Icon name="check-circle" size={28} color="#3b911f" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navButton}onPress={() => navigation.navigate('Contacto')}>
+        <Icon name="format-list-bulleted" size={28} color="#3b911f" />
         </TouchableOpacity>
       </View>
     </View>
@@ -340,6 +386,23 @@ const styles = StyleSheet.create({
   badgeText: {
     color: '#fff',
     fontSize: 12,
+    fontWeight: 'bold',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  notpubli: {
+    width:100,
+    height:100,
+  },
+  emptyText: {
+    fontSize: 18,
+    color: '#254b1c',
+    marginTop: 10,
+    textAlign: 'center',
     fontWeight: 'bold',
   },
 });

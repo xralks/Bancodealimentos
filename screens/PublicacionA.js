@@ -1,21 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Alert, Image, TouchableOpacity, ScrollView } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { useNavigation } from '@react-navigation/native';
 
 const PublicacionA = ({ route }) => {
   const { itemId } = route.params;
+  const navigation = useNavigation();
 
   const [isLoading, setIsLoading] = useState(true);
   const [publicacionData, setPublicacionData] = useState(null);
   const [authorFullName, setAuthorFullName] = useState('');
   const [authorAddress, setAuthorAddress] = useState('');
-  const [authorType, setAuthorType] = useState('');
+  const [authorType, setAuthorType] = useState(''); // Tipo de usuario (institución u otro)
   const [isAccepted, setIsAccepted] = useState(false);
+  const [productosData, setProductosData] = useState([]);
 
   useEffect(() => {
     const fetchPublicacionData = async () => {
       try {
-        const { data, error } = await supabase
+        const { data: postData, error } = await supabase
           .from('posts')
           .select('*')
           .eq('id', itemId)
@@ -25,9 +28,10 @@ const PublicacionA = ({ route }) => {
           throw error;
         }
 
-        setPublicacionData(data);
-        setIsAccepted(data.aceptada === 'aceptada');
-        await fetchAuthorDetails(data.user_id);
+        setPublicacionData(postData);
+        setIsAccepted(postData.aceptada === 'aceptada');
+        await fetchAuthorDetails(postData.user_id);
+        await fetchProductos(postData.user_id);
         setIsLoading(false);
       } catch (error) {
         Alert.alert('Error', 'No se pudo cargar la publicación.');
@@ -52,22 +56,34 @@ const PublicacionA = ({ route }) => {
 
       setAuthorFullName(data.full_name);
       setAuthorAddress(data.direccion);
-      setAuthorType(data.tipo); 
+      setAuthorType(data.tipo); // Guardamos el tipo de usuario (institución u otro)
     } catch (error) {
       console.error('Error fetching author details:', error.message);
     }
   };
 
+  const fetchProductos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('post_productos')
+        .select(`
+          cantidadp,
+          productos (nombrep)
+        `)
+        .eq('post_id', itemId);
+  
+      if (error) {
+        throw error;
+      }
+  
+      setProductosData(data);
+    } catch (error) {
+      console.error('Error fetching productos:', error.message);
+    }
+  };
+
   const handleAcceptPress = async () => {
     try {
-      // Obtener el usuario actual
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        throw new Error('Usuario no autenticado');
-      }
-
-      
       Alert.alert(
         'Confirmar',
         `¿Estás seguro de que deseas ${isAccepted ? 'rechazar' : 'aceptar'} esta publicación?`,
@@ -80,24 +96,29 @@ const PublicacionA = ({ route }) => {
             text: 'Aceptar',
             onPress: async () => {
               try {
-               
+                let newAceptadaStatus = isAccepted ? 'no aceptada' : 'aceptada';
+  
+                // Verificamos si el autor es una institución, ignorando mayúsculas/minúsculas
+                if (authorType.toLowerCase() === 'institución' && !isAccepted) {
+                  newAceptadaStatus = 'institucionaceptada';
+                }
+  
+                // Actualizar la publicación en la base de datos
                 const { error: updateError } = await supabase
                   .from('posts')
-                  .update({ aceptada: isAccepted ? 'no aceptada' : 'aceptada' }) 
+                  .update({ aceptada: newAceptadaStatus })
                   .eq('id', itemId);
-
+  
                 if (updateError) {
                   throw updateError;
                 }
-
-               
+  
                 setIsAccepted(!isAccepted);
-
-                
-                Alert.alert('Éxito', `Publicación ${isAccepted ? 'rechazada' : 'aceptada'} correctamente.`);
+  
+                Alert.alert('Éxito', `Publicación ${isAccepted ? 'rechazada' : newAceptadaStatus === 'institucionaceptada' ? 'aceptada como institución' : 'aceptada'} correctamente.`);
               } catch (error) {
                 Alert.alert('Error', `No se pudo ${isAccepted ? 'rechazar' : 'aceptar'} la publicación.`);
-                console.error('Error updating publicacion acceptance:', error.message);
+                console.error('Error actualizando la publicación:', error.message);
               }
             },
           },
@@ -106,7 +127,7 @@ const PublicacionA = ({ route }) => {
       );
     } catch (error) {
       Alert.alert('Error', `No se pudo ${isAccepted ? 'rechazar' : 'aceptar'} la publicación.`);
-      console.error('Error updating publicacion acceptance:', error.message);
+      console.error('Error actualizando la publicación:', error.message);
     }
   };
 
@@ -127,8 +148,26 @@ const PublicacionA = ({ route }) => {
         />
         <View style={styles.contentContainer}>
           <Text style={styles.title}>{publicacionData.title}</Text>
-          <Text style={styles.detailText}>Publicado por: {authorFullName}</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Usuario', { userId: publicacionData.user_id })}>
+            <Text style={styles.detailText}>Publicado por: <Text style={styles.authorName}>{authorFullName}</Text></Text>
+          </TouchableOpacity>
           <Text style={styles.content}>{publicacionData.content}</Text>
+          {productosData.length > 0 ? (
+              <>
+                <Text style={styles.detailTextBold}>Productos:</Text>
+                {productosData.map((producto, index) => (
+                  <Text key={index} style={styles.detailText}>
+                    {producto.productos.nombrep} - Cantidad: {producto.cantidadp} kg
+                  </Text>
+                ))}
+              </>
+            ) : null}
+            {publicacionData.detalle_pedido ? (
+              <>
+                <Text style={styles.detailTextBold}>Detalle:</Text>
+                <Text style={styles.detailText}>{publicacionData.detalle_pedido}</Text>
+              </>
+            ) : null}
           <View style={styles.detailsContainer}>
             <Text style={styles.detailTextBold}>Fecha y Hora:</Text>
             <Text style={styles.detailText}>{formatDateTime(publicacionData.created_at)}</Text>
@@ -136,18 +175,6 @@ const PublicacionA = ({ route }) => {
               <>
                 <Text style={styles.detailTextBold}>Ubicación:</Text>
                 <Text style={styles.detailText}>{authorAddress}</Text>
-              </>
-            ) : null}
-            {publicacionData.cantidad ? (
-              <>
-                <Text style={styles.detailTextBold}>Cantidad:</Text>
-                <Text style={styles.detailText}>{publicacionData.cantidad}</Text>
-              </>
-            ) : null}
-            {publicacionData.detalle_pedido ? (
-              <>
-                <Text style={styles.detailTextBold}>Detalle:</Text>
-                <Text style={styles.detailText}>{publicacionData.detalle_pedido}</Text>
               </>
             ) : null}
           </View>
@@ -159,7 +186,7 @@ const PublicacionA = ({ route }) => {
           onPress={handleAcceptPress}
         >
           <Text style={styles.acceptButtonText}>
-            {isAccepted ? 'Rechazar' : 'Aceptar'}
+            {isAccepted ? 'Rechazar' : 'Aceptar'}   
           </Text>
         </TouchableOpacity>
       </View>
@@ -224,6 +251,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     color: '#777',
   },
+  authorName: {
+    fontSize: 16,
+    marginBottom: 8,
+    fontWeight: 'bold',
+    color: '#50b62c',
+  },
   buttonContainer: {
     paddingHorizontal: 20,
     paddingVertical: 15,
@@ -235,12 +268,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#77d353',
     borderRadius: 10,
     alignItems: 'center',
-    marginBottom:12,
   },
   acceptButtonText: {
     fontSize: 18,
+    fontWeight: 'bold',
     color: '#fff',
-  fontWeight: 'bold',
   },
 });
 

@@ -94,6 +94,16 @@ export default function HomeA({ navigation }) {
     }
   };
 
+  const renderEmptyComponent = () => (
+    <View style={styles.emptyContainer}>
+      <Image
+        source={require('../assets/publicacion.png')}
+        style={styles.notpubli}
+      />
+      <Text style={styles.emptyText}>Aún no hay publicaciones.</Text>
+    </View>
+  );
+
   const navigateToAddPost = () => {
     navigation.navigate('AgregarAdmin');
   };
@@ -161,6 +171,7 @@ export default function HomeA({ navigation }) {
         data={posts}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderPost}
+        ListEmptyComponent={renderEmptyComponent}
         style={styles.postsList}
         refreshControl={
           <RefreshControl
@@ -174,10 +185,13 @@ export default function HomeA({ navigation }) {
         <Icon name="account-outline" size={28} color="#3b911f" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('MyPublication')}>
-        <Icon name="format-list-bulleted" size={28} color="#3b911f" />
+        <Icon name="file-document" size={28} color="#3b911f" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.navButton}onPress={() => navigation.navigate('Ubicaciones')}>
         <Icon name="map-marker" size={28} color="#3b911f" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navButton}onPress={() => navigation.navigate('Lista')}>
+        <Icon name="format-list-bulleted" size={28} color="#3b911f" />
         </TouchableOpacity>
       </View>
     </View>
@@ -331,6 +345,23 @@ const styles = StyleSheet.create({
   badgeText: {
     color: '#fff',
     fontSize: 12,
+    fontWeight: 'bold',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  notpubli: {
+    width:100,
+    height:100,
+  },
+  emptyText: {
+    fontSize: 18,
+    color: '#254b1c',
+    marginTop: 10,
+    textAlign: 'center',
     fontWeight: 'bold',
   },
 });

@@ -8,7 +8,9 @@ const Publicacion = ({ route, navigation }) => {
   const [publicacionData, setPublicacionData] = useState(null);
   const [authorFullName, setAuthorFullName] = useState('');
   const [authorAddress, setAuthorAddress] = useState('');
-  const [userType, setUserType] = useState(null);
+  const [authorType, setAuthorType] = useState(null);
+  const [productosData, setProductosData] = useState([]);
+  const [isAccepted, setIsAccepted] = useState(false);
 
   useEffect(() => {
     fetchProfile()
@@ -28,7 +30,6 @@ const Publicacion = ({ route, navigation }) => {
 
       if (profileError) throw profileError;
 
-      setUserType(data.tipo);
       fetchPublicacionData(itemId);
     } catch (error) {
       console.error('Error in fetchProfile:', error);
@@ -38,7 +39,7 @@ const Publicacion = ({ route, navigation }) => {
 
   const fetchPublicacionData = async (itemId) => {
     try {
-      const { data, error } = await supabase
+      const { data: postData, error } = await supabase
         .from('posts')
         .select('*')
         .eq('id', itemId)
@@ -46,8 +47,15 @@ const Publicacion = ({ route, navigation }) => {
 
       if (error) throw error;
 
-      setPublicacionData(data);
-      await fetchAuthorDetails(data.user_id);
+      setPublicacionData(postData);
+      setIsAccepted(postData.aceptada === 'aceptada');
+      await fetchAuthorDetails(postData.user_id);
+
+      // Si el detalle_pedido está vacío, buscamos los productos
+      if (!postData.detalle_pedido) {
+        await fetchProductos(itemId);
+      }
+
       setIsLoading(false);
     } catch (error) {
       Alert.alert('Error', 'No se pudo cargar la publicación.');
@@ -59,7 +67,7 @@ const Publicacion = ({ route, navigation }) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('full_name, direccion')
+        .select('full_name, direccion, tipo')
         .eq('id', userId)
         .single();
 
@@ -67,18 +75,27 @@ const Publicacion = ({ route, navigation }) => {
 
       setAuthorFullName(data.full_name);
       setAuthorAddress(data.direccion);
+      setAuthorType(data.tipo); // Guardamos el tipo de usuario (institución u otro)
     } catch (error) {
       console.error('Error fetching author details:', error.message);
     }
   };
 
-  const handleButtonPress = () => {
-    if (userType === 'Locatario') {
-      navigation.navigate('AgregarLocatario');
-    } else if (userType === 'Institución') {
-      navigation.navigate('AgregarInstitucion');
-    } else {
-      Alert.alert('Error', 'Tipo de usuario no reconocido.');
+  const fetchProductos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('post_productos')
+        .select(`
+          cantidadp,
+          productos (nombrep)
+        `)
+        .eq('post_id', itemId);
+
+      if (error) throw error;
+
+      setProductosData(data);
+    } catch (error) {
+      console.error('Error fetching productos:', error.message);
     }
   };
 
@@ -95,29 +112,41 @@ const Publicacion = ({ route, navigation }) => {
       <ScrollView style={styles.scroll}>
         <Image source={require('../assets/postIma.jpg')} style={styles.image} />
         <View style={styles.contentContainer}>
-          <View style={styles.containeraviso1}>
-            <Text style={styles.titulo}>IMPORTANTE</Text>
-            <Text style={styles.heading2}>
-            {userType === 'Locatario' ? 'Esto es solo un aviso de Administración. Si eres locatario y deseas donar productos, deberás crear una publicación con los productos disponibles para la donación.' : 'Esto es solo un aviso de Administración. Si eres Institución y deseas recibir productos, deberás crear una publicación con los productos que se mencionan.'}
-            </Text>
-          </View>
           <Text style={styles.title}>{publicacionData.title}</Text>
-          <Text style={styles.detailText}>Publicado por: (Admin) {authorFullName}</Text>
+          <Text style={styles.detailText}>Publicado por: {authorFullName} (yo)</Text>
           <Text style={styles.content}>{publicacionData.content}</Text>
-          <Text style={styles.detailText}>Productos: {publicacionData.cantidad}</Text>
+          {publicacionData.detalle_pedido ? (
+              <>
+                <Text style={styles.detailTextBold}>Productos:</Text>
+                <Text style={styles.detailText}>{publicacionData.detalle_pedido}</Text>
+              </>
+            ) : (
+              
+              productosData.length > 0 && (
+                <>
+                  <Text style={styles.detailTextBold}>Productos:</Text>
+                  {productosData.map((producto, index) => (
+                    <Text key={index} style={styles.detailText}>
+                      {producto.productos.nombrep} - Cantidad: {producto.cantidadp} KG
+                    </Text>
+                  ))}
+                </>
+              )
+            )}
+
           <View style={styles.detailsContainer}>
             <Text style={styles.detailText}>Fecha y Hora: {formatDateTime(publicacionData.created_at)}</Text>
             <Text style={styles.detailText}>Dirección: {authorAddress}</Text>
           </View>
+
+          <View style={styles.containeraviso1}>
+            <Text style={styles.titulo}>Recordatorio</Text>
+            <Text style={styles.heading2}>
+              Esto es solo una muestra de tu publicación
+            </Text>
+          </View>
         </View>
       </ScrollView>
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.contactButton} onPress={handleButtonPress}>
-          <Text style={styles.contactButtonText}>
-            {userType === 'Locatario' ? 'Crear publicación' : 'Crear publicación'}
-          </Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 };
@@ -173,26 +202,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     color: '#777',
   },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-  },
-  contactButton: {
-    flex: 1,
-    backgroundColor: '#77d353',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginLeft: 10,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  contactButtonText: {
+  detailTextBold: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
+    marginBottom: 10,
+    color: '#333',
   },
   containeraviso1: {
     backgroundColor: '#f0fbea',

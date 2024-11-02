@@ -19,6 +19,12 @@ import HomeA from './screens/HomeA';
 import AgregarInstitucion from './screens/AgregarInstitucion';
 import AgregarLocatario from './screens/AgregarLocatario';
 import Ubicaciones from './screens/Ubicaciones';
+import Lista from './screens/lista';
+import Usuario from './screens/Usuario';
+import RutacontatoIns from './screens/RutacontactoIns';
+import Detalles from './screens/Detalles';
+import InfoPublicacion from './screens/InfoPublicacion';
+
 
 const Stack = createStackNavigator();
 
@@ -74,7 +80,7 @@ const App = () => {
                   headerTitleAlign:"center",
                   headerStyle:{backgroundColor:"#77d353",}
          }} />
-        <Stack.Screen name="Aceptadas" component={Aceptadas} options={{ title: 'Aceptadas',
+        <Stack.Screen name="Aceptadas" component={Aceptadas} options={{ title: 'Estado Publicaciones',
                   headerTintColor:"white",
                   headerTitleAlign:"center",
                   headerStyle:{backgroundColor:"#77d353",}
@@ -104,7 +110,31 @@ const App = () => {
                   headerTitleAlign:"center",
                   headerStyle:{backgroundColor:"#77d353",}
          }} />
-
+        <Stack.Screen name="Lista" component={Lista} options={{ title: 'Stock Productos',
+                  headerTintColor:"white",
+                  headerTitleAlign:"center",
+                  headerStyle:{backgroundColor:"#77d353",}
+         }} />
+         <Stack.Screen name='Usuario' component={Usuario} options={{title: 'Usuario',
+                  headerTintColor:"white",
+                  headerTitleAlign:"center",
+                  headerStyle:{backgroundColor:"#77d353",}
+         }} />
+         <Stack.Screen name='Contacto' component={RutacontatoIns} options={{title: 'Contacto',
+                  headerTintColor:"white",
+                  headerTitleAlign:"center",
+                  headerStyle:{backgroundColor:"#77d353",}
+         }} />
+         <Stack.Screen name='Detalles' component={Detalles} options={{title:'Detalles',
+                  headerTintColor:"white",
+                  headerTitleAlign:"center",
+                  headerStyle:{backgroundColor:"#77d353",}
+         }} />
+         <Stack.Screen name='Informacion' component={InfoPublicacion} options={{title:'Informacion',
+                  headerTintColor:"white",
+                  headerTitleAlign:"center",
+                  headerStyle:{backgroundColor:"#77d353",}
+         }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

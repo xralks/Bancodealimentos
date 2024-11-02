@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image, Switch } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image, Switch, ScrollView } from 'react-native';
 import { supabase } from '../lib/supabase';
 
 export default function AgregarAdmin({ navigation }) {
@@ -40,11 +40,20 @@ export default function AgregarAdmin({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView 
+      contentContainerStyle={styles.container} 
+      keyboardShouldPersistTaps="handled"
+    >
       <View>
         <Image source={require('../assets/logo.png')} style={styles.Logo} />
       </View>
-      <Text style={styles.heading}>Crea una Publicación para los Locatarios o Instituciones y ellos serán notificados. </Text>
+      <Text style={styles.heading}>Crea una publicación para los Locatarios o Instituciones y ellos serán notificados.</Text>
+      <View style={styles.containeraviso1}>
+        <Text style={styles.titulo}>IMPORTANTE</Text>
+        <Text style={styles.heading2}>
+          Solo será un aviso. Los locatarios que deseen donar productos deberán crear su propia publicación, al igual que las instituciones que quieran recibir productos donados.
+        </Text>
+      </View>
       <TextInput
         style={styles.input}
         placeholder="Título"
@@ -70,13 +79,13 @@ export default function AgregarAdmin({ navigation }) {
       <TouchableOpacity style={styles.button} onPress={handleSave}>
         <Text style={styles.buttonText}>PUBLICAR</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -134,5 +143,31 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginRight: 10,
     color: '#333',
+  },
+  containeraviso1: {
+    backgroundColor: '#f0fbea',
+    padding: 10,
+    marginHorizontal: 15,
+    marginBottom: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#77d353',
+    shadowColor: '#000',
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.07,
+    shadowRadius: 9,
+    elevation: 5,
+  },
+  heading2: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#0f290a',
+    paddingHorizontal: 10,
+  },
+  titulo: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#2a581c',
+    paddingHorizontal: 10,
   },
 });
